@@ -1,40 +1,40 @@
-use echo::core::html::HTML;
+use echo::core::html::{HTML, HTMLError};
 use echo::core::parser::Parser;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
+use std::env::var;
+use dotenvy::dotenv;
 
-fn handler(buf: &[u8], size: usize, remote: &str) -> String {
+fn handler(buf: &[u8], size: usize) -> Result<String, HTMLError> {
     let parser = Parser::new(buf, size);
 
-    let html = HTML::new(remote, &parser);
+    let mut html = HTML::default();
 
-    let document = html.document();
+    html.init(&parser);
 
-    format!(
+    let document = html.document()?;
+
+    Ok(format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n{}\r\n",
         document
-    )
+    ))
 }
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let listener = TcpListener::bind("127.0.0.1:8080").await?;
+    dotenv().ok();
+
+    let host = var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let port = var("PORT").unwrap_or_else(|_| "8080".to_string());
+
+    let addr = format!("{}:{}", host, port);
+
+    let listener = TcpListener::bind(addr).await?;
 
     loop {
         let (mut socket, _) = listener.accept().await?;
 
-        // Get the remote address
-        let remote_addr = match socket.peer_addr() {
-            Ok(addr) => addr,
-            Err(e) => {
-                eprintln!("failed to get peer address; err = {:?}", e);
-                return Err(e.into());
-            }
-        };
-
         tokio::spawn(async move {
-            let mut buf = [0; 1024];
-
-            let remote = format!("{} {}", remote_addr.ip(), remote_addr.port());
+            let mut buf = [0; 4096];
 
             let n = match socket.read(&mut buf).await {
                 // socket closed
@@ -46,7 +46,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
 
-            let response = handler(&buf, n, &remote);
+            let response = match handler(&buf, n) {
+                Ok(response) => response,
+                Err(e) => {
+                    eprintln!("failed to handle request; err = {:?}", e);
+                    return;
+                }
+            };
 
             if let Err(e) = socket.write_all(response.as_bytes()).await {
                 eprintln!("failed to write to socket; err = {:?}", e);
