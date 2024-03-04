@@ -1,9 +1,9 @@
-use echo::core::html::{HTML, HTMLError};
+use dotenvy::dotenv;
+use echo::core::html::{HTMLError, HTML};
 use echo::core::parser::Parser;
+use std::env::var;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
-use std::env::var;
-use dotenvy::dotenv;
 
 fn handler(buf: &[u8], size: usize) -> Result<String, HTMLError> {
     let parser = Parser::new(buf, size);

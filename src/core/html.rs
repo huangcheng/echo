@@ -22,6 +22,7 @@ impl<'r> HTML<'r> {
         "<head><style>body {color: black; background-color: white;} tr:hover { background: yellow }</style></head>\n".to_string()
     }
 
+    #[rustfmt::skip]
     fn headers_table(&self) -> Result<String, HTMLError> {
         if self.parser.is_none() {
             return Err(HTMLError::UninitializedError);
@@ -42,14 +43,14 @@ impl<'r> HTML<'r> {
 
                 let row = [
                     "<tr>",
-                    r#"<td valign="top">"#,
-                    "<b>",
-                    key.as_str(),
-                    "</b>",
-                    "</td>",
-                    "<td>",
-                    value,
-                    "</td>",
+                        r#"<td valign="top">"#,
+                            "<b>",
+                                key.as_str(),
+                            "</b>",
+                        "</td>",
+                        "<td>",
+                            value,
+                        "</td>",
                     "</tr>",
                 ];
 
