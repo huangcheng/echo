@@ -1,23 +1,21 @@
 use dotenvy::dotenv;
-use echo::core::html::{HTMLError, HTML};
+use echo::core::html::HTML;
 use echo::core::parser::Parser;
 use std::env::var;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
-fn handler(buf: &[u8], size: usize) -> Result<String, HTMLError> {
+fn handler(buf: &[u8], size: usize, remote: &str) -> String {
     let parser = Parser::new(buf, size);
 
-    let mut html = HTML::default();
+    let html = HTML::new(remote, &parser);
 
-    html.init(&parser);
+    let document = html.document();
 
-    let document = html.document()?;
-
-    Ok(format!(
+    format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n{}\r\n",
         document
-    ))
+    )
 }
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -33,8 +31,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let (mut socket, _) = listener.accept().await?;
 
+        // Get the remote address
+        let remote_addr = match socket.peer_addr() {
+            Ok(addr) => addr,
+            Err(e) => {
+                eprintln!("failed to get peer address; err = {:?}", e);
+                return Err(e.into());
+            }
+        };
+
         tokio::spawn(async move {
             let mut buf = [0; 4096];
+
+            let remote = format!("{} {}", remote_addr.ip(), remote_addr.port());
 
             let n = match socket.read(&mut buf).await {
                 // socket closed
@@ -46,13 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
 
-            let response = match handler(&buf, n) {
-                Ok(response) => response,
-                Err(e) => {
-                    eprintln!("failed to handle request; err = {:?}", e);
-                    return;
-                }
-            };
+            let response = handler(&buf, n, remote.as_str());
 
             if let Err(e) = socket.write_all(response.as_bytes()).await {
                 eprintln!("failed to write to socket; err = {:?}", e);

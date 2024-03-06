@@ -2,20 +2,14 @@ use chrono::Utc;
 
 use super::parser::Parser;
 
-#[derive(Default)]
 pub struct HTML<'r> {
-    // remote: &'r str,
-    parser: Option<&'r Parser<'r>>,
-}
-
-#[derive(Debug)]
-pub enum HTMLError {
-    UninitializedError,
+    remote: &'r str,
+    parser: &'r Parser<'r>,
 }
 
 impl<'r> HTML<'r> {
-    pub fn init(&mut self, parser: &'r Parser<'r>) {
-        self.parser = Some(parser);
+    pub fn new(remote: &'r str, parser: &'r Parser<'r>) -> Self {
+        HTML { remote, parser }
     }
 
     fn head() -> String {
@@ -23,12 +17,8 @@ impl<'r> HTML<'r> {
     }
 
     #[rustfmt::skip]
-    fn headers_table(&self) -> Result<String, HTMLError> {
-        if self.parser.is_none() {
-            return Err(HTMLError::UninitializedError);
-        }
-
-        let headers = self.parser.unwrap().header_lines();
+    fn headers_table(&self) -> String {
+        let headers = self.parser.header_lines();
 
         let mut table = vec![String::from(
             r#"<table mini:hint="folded;Headers" border="0" cellpadding="3" cellspacing="0"><tbody>"#,
@@ -62,26 +52,22 @@ impl<'r> HTML<'r> {
 
         table.push(String::from("</tbody></table>"));
 
-        Ok(table.join(""))
+        table.join("")
     }
 
-    fn method(&self) -> Result<String, HTMLError> {
-        if self.parser.is_none() {
-            return Err(HTMLError::UninitializedError);
-        }
-
-        Ok(format!("<h2>{}</h2>", self.parser.unwrap().method()))
+    fn method(&self) -> String {
+        format!("<h2>{}</h2>", self.parser.method())
     }
 
-    fn raw(&self) -> Result<String, HTMLError> {
-        if self.parser.is_none() {
-            return Err(HTMLError::UninitializedError);
-        }
+    fn remote(&self) -> String {
+        format!("<h2>Remote: {}</h2>", self.remote)
+    }
 
-        Ok(format!(
+    fn raw(&self) -> String {
+        format!(
             r#"<div mini:hint="folded;Raw Request"><h2>Raw request</h2><pre>{}</pre></div>"#,
-            self.parser.unwrap().raw()
-        ))
+            self.parser.raw()
+        )
     }
 
     fn time() -> String {
@@ -91,20 +77,21 @@ impl<'r> HTML<'r> {
         format!("<p>Page generated at {}</p>", formatted_date)
     }
 
-    fn body(&self) -> Result<String, HTMLError> {
-        Ok(format!(
-            r#"<body>{}{}<hr noshade="">{}<hr noshade="">{}</body>"#,
-            self.method()?,
-            self.headers_table()?,
-            self.raw()?,
+    fn body(&self) -> String {
+        format!(
+            r#"<body>{}{}{}<hr noshade="">{}<hr noshade="">{}</body>"#,
+            self.method(),
+            self.remote(),
+            self.headers_table(),
+            self.raw(),
             Self::time()
-        ))
+        )
     }
 
-    pub fn document(&self) -> Result<String, HTMLError> {
+    pub fn document(&self) -> String {
         let head = HTML::head();
-        let body = self.body()?;
+        let body = self.body();
 
-        Ok(format!("<html>{}{}</html>", head, body))
+        format!("<html>{}{}</html>", head, body)
     }
 }
