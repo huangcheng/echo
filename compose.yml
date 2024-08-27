@@ -1,0 +1,30 @@
+services:
+  app:
+    # Build the image and pass the APP build-arg (defaults to 'echo')
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: ${APP:-echo}
+    image: ${IMAGE:-echo-app}
+
+    # Runtime environment (can be overridden when running)
+    environment:
+      - APP=${APP:-echo}
+
+    # Expose a port — adjust if your app listens on a different one
+    ports:
+      - "8088:3000"
+
+    # Development helper: if you want to run the locally built release
+    # instead of the one baked into the image, uncomment the volumes
+    # entry below (make sure a release exists at the path).
+    # volumes:
+    #   - ./_build/default/rel/${APP:-echo}:/app:ro
+
+    # Useful for `docker-compose up` to keep logs attached
+    tty: true
+
+    # Don't restart by default; change to "always" if you prefer
+    restart: "always"
+

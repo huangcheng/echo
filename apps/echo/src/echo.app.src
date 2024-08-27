@@ -1,0 +1,17 @@
+{application, echo, [
+    {description, "A server that echoes HTTP requests back"},
+    {vsn, "0.1.0"},
+    {registered, [echo_sup, echo_server]},
+    {mod, {echo_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        sasl
+    ]},
+    {env, []},
+    {modules, []},
+
+    {licenses, ["MIT"]},
+    {maintainers, ["Cheng Huang <cheng@wuhan.dev>"]},
+    {links, ["https://github.com/huangcheng/echo"]}
+]}.
